@@ -22,7 +22,7 @@ import {
 import {
   cleanFirestoreData,
   validateRequiredFields,
-  getServerTimestamp,
+  getCurrentDateString,
 } from "@/utils/firestore";
 
 const COLLECTION_NAME = "stores";
@@ -49,12 +49,13 @@ export class StoresService {
         throw new Error("Store code already exists");
       }
 
-      // Prepare document data
+      // Prepare document data with string dates
+      const currentDate = getCurrentDateString();
       const docData = cleanFirestoreData({
         ...storeData,
         active: true,
-        createdAt: getServerTimestamp(),
-        updatedAt: getServerTimestamp(),
+        createdAt: currentDate,
+        updatedAt: currentDate,
       });
 
       // Add document to Firestore
@@ -64,8 +65,6 @@ export class StoresService {
       const createdStore: StoreData = {
         ...docData,
         id: docRef.id,
-        createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
-        updatedAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
       } as StoreData;
 
       return createSuccessResponse(createdStore, "Store created successfully");
@@ -92,7 +91,7 @@ export class StoresService {
       // Prepare update data
       const cleanedData = cleanFirestoreData({
         ...updateData,
-        updatedAt: getServerTimestamp(),
+        updatedAt: getCurrentDateString(),
       });
 
       // Update document
@@ -119,7 +118,7 @@ export class StoresService {
 
       await updateDoc(docRef, {
         active: false,
-        updatedAt: getServerTimestamp(),
+        updatedAt: getCurrentDateString(),
       });
 
       return createSuccessResponse(true, "Store deactivated successfully");
@@ -136,7 +135,7 @@ export class StoresService {
 
       await updateDoc(docRef, {
         active: true,
-        updatedAt: getServerTimestamp(),
+        updatedAt: getCurrentDateString(),
       });
 
       return createSuccessResponse(true, "Store reactivated successfully");

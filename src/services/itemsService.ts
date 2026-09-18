@@ -43,7 +43,7 @@ const REQUIRED_FIELDS = ["name", "color", "storeId"];
 
 // Helper function to generate current date string
 const getCurrentDateString = (): string => {
-  return format(new Date(), "dd/MM/yyyy HH:mm", { locale: id });
+  return format(new Date(), "EEEE, d MMMM yyyy HH:mm:ss", { locale: id });
 };
 
 export class ItemsService {

@@ -14,6 +14,7 @@ import {
   onSnapshot,
   Unsubscribe,
   runTransaction,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebaseConfig";
 import { InvoiceType, InvoiceStatus, StoreData } from "@/types/table";
@@ -26,7 +27,7 @@ import {
 import {
   cleanFirestoreData,
   validateRequiredFields,
-  getServerTimestamp,
+  getCurrentDateString,
   generateInvoiceNumber,
   getInvoiceCounterDocId,
   PaginationOptions,
@@ -97,44 +98,104 @@ export class InvoicesService {
         throw new Error("Invoice must have at least one item");
       }
 
-      // Generate invoice number
-      const invoiceNumber = await this.getNextInvoiceNumber(
-        storeData.id,
-        storeData.code
-      );
+      const currentDate = getCurrentDateString();
+      const invoiceRef = doc(collection(db, COLLECTION_NAME));
 
-      // Calculate totals
-      const calculatedTotals = this.calculateInvoiceTotals(invoiceData.items);
+      // Use transaction to ensure atomicity for invoice number and stock updates
+      const result = await runTransaction(db, async (transaction) => {
+        // 1. Get next invoice number
+        const date = new Date();
+        const counterDocId = getInvoiceCounterDocId(date);
+        const counterDoc = doc(
+          db,
+          "stores",
+          storeData.id,
+          "invoiceCounters",
+          counterDocId
+        );
 
-      // Prepare document data
-      const docData = cleanFirestoreData({
-        ...invoiceData,
-        invoiceNumber,
-        status: invoiceData.status || "belum lunas",
-        totalColor: calculatedTotals.totalColors,
-        totalRoll: calculatedTotals.totalRolls,
-        totalYard: calculatedTotals.totalYards,
-        grandTotal: calculatedTotals.grandTotal,
-        createdBy: userId,
-        createdAt: getServerTimestamp(),
-        updatedAt: getServerTimestamp(),
+        const counterSnap = await transaction.get(counterDoc);
+        let nextSequence = 1;
+        if (counterSnap.exists()) {
+          nextSequence = (counterSnap.data().lastNumber || 0) + 1;
+        }
+
+        const invoiceNumber = generateInvoiceNumber(
+          storeData.code,
+          nextSequence,
+          date
+        );
+
+        // 2. Read and validate all item stocks
+        const itemUpdates: { ref: any; newStock: number }[] = [];
+
+        for (const item of invoiceData.items) {
+          if (item.itemId) {
+            const itemRef = doc(db, "items", item.itemId);
+            const itemSnap = await transaction.get(itemRef);
+
+            if (!itemSnap.exists()) {
+              throw new Error(`Item with ID ${item.itemId} not found`);
+            }
+
+            const currentStock = itemSnap.data().roll || 0;
+            const newStock = currentStock - item.roll;
+
+            if (newStock < 0) {
+              throw new Error(
+                `Insufficient stock for item ${item.name} (${item.color}). Available: ${currentStock}, Required: ${item.roll}`
+              );
+            }
+
+            itemUpdates.push({ ref: itemRef, newStock });
+          }
+        }
+
+        // 3. Calculate totals
+        const calculatedTotals = this.calculateInvoiceTotals(invoiceData.items);
+
+        // 4. Prepare invoice document data
+        const docData = cleanFirestoreData({
+          ...invoiceData,
+          invoiceNumber,
+          storeId: storeData.id,
+          status: invoiceData.status || "belum lunas",
+          totalColor: calculatedTotals.totalColors,
+          totalRoll: calculatedTotals.totalRolls,
+          totalYard: calculatedTotals.totalYards,
+          grandTotal: calculatedTotals.grandTotal,
+          createdBy: userId,
+          createdAt: currentDate,
+          updatedAt: currentDate,
+        });
+
+        // 5. Perform all writes
+        // Set invoice
+        transaction.set(invoiceRef, docData);
+
+        // Update stock for each item
+        for (const update of itemUpdates) {
+          transaction.update(update.ref, {
+            roll: update.newStock,
+            updatedAt: currentDate,
+            updatedBy: userId,
+          });
+        }
+
+        // Update counter
+        transaction.set(
+          counterDoc,
+          { lastNumber: nextSequence },
+          { merge: true }
+        );
+
+        return {
+          ...docData,
+          id: invoiceRef.id,
+        } as InvoiceType;
       });
 
-      // Add document to Firestore
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), docData);
-
-      // Return the created invoice with ID
-      const createdInvoice: InvoiceType = {
-        ...docData,
-        id: docRef.id,
-        createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
-        updatedAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
-      } as InvoiceType;
-
-      return createSuccessResponse(
-        createdInvoice,
-        "Invoice created successfully"
-      );
+      return createSuccessResponse(result, "Invoice created successfully");
     } catch (error) {
       const firestoreError = handleFirestoreError(error);
       return createErrorResponse(firestoreError);
@@ -174,7 +235,7 @@ export class InvoicesService {
       // Prepare update data
       const cleanedData = cleanFirestoreData({
         ...calculatedData,
-        updatedAt: getServerTimestamp(),
+        updatedAt: getCurrentDateString(),
       });
 
       // Update document
@@ -205,7 +266,7 @@ export class InvoicesService {
     try {
       const updateData = {
         status,
-        updatedAt: getServerTimestamp(),
+        updatedAt: getCurrentDateString(),
       };
 
       return await this.updateInvoice(invoiceId, updateData, "");
@@ -250,15 +311,19 @@ export class InvoicesService {
     }
   }
 
-  // Get invoices by store (derived from invoice number)
+  // Get invoices by store (using storeId)
   static async getInvoicesByStore(
-    storeCode: string,
-    options: PaginationOptions = defaultPaginationOptions,
+    storeId: string,
+    options: PaginationOptions = {},
     statusFilter?: InvoiceStatus,
     searchTerm?: string
   ): Promise<ApiResponse<InvoiceType[]>> {
     try {
-      let invoicesQuery = query(collection(db, COLLECTION_NAME));
+      // Start with storeId filter
+      let invoicesQuery = query(
+        collection(db, COLLECTION_NAME),
+        where("storeId", "==", storeId)
+      );
 
       // Add status filter
       if (statusFilter) {
@@ -269,7 +334,7 @@ export class InvoicesService {
       }
 
       // Add ordering
-      if (options.orderBy) {
+      if (options?.orderBy) {
         invoicesQuery = query(
           invoicesQuery,
           orderBy(options.orderBy, options.orderDirection)
@@ -277,11 +342,11 @@ export class InvoicesService {
       }
 
       // Add pagination
-      if (options.limit) {
+      if (options?.limit) {
         invoicesQuery = query(invoicesQuery, limit(options.limit));
       }
 
-      if (options.startAfter) {
+      if (options?.startAfter) {
         invoicesQuery = query(invoicesQuery, startAfter(options.startAfter));
       }
 
@@ -291,20 +356,15 @@ export class InvoicesService {
         ...doc.data(),
       })) as InvoiceType[];
 
-      // Filter by store code and search term on client side
-      invoices = invoices.filter((invoice) => {
-        const matchesStore = invoice.invoiceNumber.startsWith(storeCode);
-        if (!matchesStore) return false;
-
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase();
-          return (
+      // Filter by search term on client side
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        invoices = invoices.filter(
+          (invoice) =>
             invoice.invoiceNumber.toLowerCase().includes(searchLower) ||
             invoice.customerName.toLowerCase().includes(searchLower)
-          );
-        }
-        return true;
-      });
+        );
+      }
 
       return createSuccessResponse(invoices);
     } catch (error) {
@@ -315,7 +375,7 @@ export class InvoicesService {
 
   // Get all invoices (for boss role)
   static async getAllInvoices(
-    options: PaginationOptions = defaultPaginationOptions,
+    options: PaginationOptions = {},
     statusFilter?: InvoiceStatus
   ): Promise<ApiResponse<InvoiceType[]>> {
     try {
@@ -330,14 +390,14 @@ export class InvoicesService {
       }
 
       // Add ordering and pagination
-      if (options.orderBy) {
+      if (options?.orderBy) {
         invoicesQuery = query(
           invoicesQuery,
           orderBy(options.orderBy, options.orderDirection)
         );
       }
 
-      if (options.limit) {
+      if (options?.limit) {
         invoicesQuery = query(invoicesQuery, limit(options.limit));
       }
 
@@ -356,16 +416,27 @@ export class InvoicesService {
 
   // Real-time listener for invoices
   static subscribeToInvoices(
-    storeCode: string | null,
+    storeId: string | null,
     callback: (invoices: InvoiceType[]) => void,
     onError: (error: Error) => void,
     statusFilter?: InvoiceStatus
   ): Unsubscribe {
     try {
-      let invoicesQuery = query(
-        collection(db, COLLECTION_NAME),
-        orderBy("updatedAt", "desc")
-      );
+      // Build query with storeId filter if provided
+      let invoicesQuery;
+
+      if (storeId) {
+        invoicesQuery = query(
+          collection(db, COLLECTION_NAME),
+          where("storeId", "==", storeId),
+          orderBy("updatedAt", "desc")
+        );
+      } else {
+        invoicesQuery = query(
+          collection(db, COLLECTION_NAME),
+          orderBy("updatedAt", "desc")
+        );
+      }
 
       // Filter by status if specified
       if (statusFilter) {
@@ -378,17 +449,10 @@ export class InvoicesService {
       return onSnapshot(
         invoicesQuery,
         (querySnapshot) => {
-          let invoices: InvoiceType[] = querySnapshot.docs.map((doc) => ({
+          const invoices: InvoiceType[] = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           })) as InvoiceType[];
-
-          // Filter by store code on client side
-          if (storeCode) {
-            invoices = invoices.filter((invoice) =>
-              invoice.invoiceNumber.startsWith(storeCode)
-            );
-          }
 
           callback(invoices);
         },
@@ -444,7 +508,7 @@ export class InvoicesService {
 
   // Get invoice statistics for dashboard
   static async getInvoiceStats(
-    storeCode?: string,
+    storeId?: string,
     startDate?: Date,
     endDate?: Date
   ): Promise<
@@ -457,22 +521,21 @@ export class InvoicesService {
     }>
   > {
     try {
-      let invoicesQuery = query(collection(db, COLLECTION_NAME));
+      // Build query with storeId filter if provided
+      let invoicesQuery = storeId
+        ? query(
+            collection(db, COLLECTION_NAME),
+            where("storeId", "==", storeId)
+          )
+        : query(collection(db, COLLECTION_NAME));
 
       // Note: For date filtering, you'd need to add date range queries
       // This is a simplified version
 
       const querySnapshot = await getDocs(invoicesQuery);
-      let invoices: InvoiceType[] = querySnapshot.docs.map((doc) =>
+      const invoices: InvoiceType[] = querySnapshot.docs.map((doc) =>
         doc.data()
       ) as InvoiceType[];
-
-      // Filter by store code if specified
-      if (storeCode) {
-        invoices = invoices.filter((invoice) =>
-          invoice.invoiceNumber.startsWith(storeCode)
-        );
-      }
 
       const stats = {
         totalInvoices: invoices.length,

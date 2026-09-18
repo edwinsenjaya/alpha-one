@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function getUserRole() {
+      return getUserData().role;
+    }
+    
+    function getUserStoreId() {
+      return getUserData().storeId;
+    }
+    
+    function isBoss() {
+      return isAuthenticated() && getUserRole() == 'boss';
+    }
+    
+    function isKepala() {
+      return isAuthenticated() && getUserRole() in ['kepala', 'boss'];
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() in ['admin', 'kepala', 'boss'];
+    }
+    
+    function canAccessStore(storeId) {
+      return isBoss() || getUserStoreId() == storeId;
+    }
+    
+    // Removed unused function isOwnerOrKepala
+
+    // Users collection
+    match /users/{userId} {
+      // Users can always read their own profile (no role checking needed)
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // For reading OTHER users: Kepala can read users in their store, boss can read all
+      allow read: if isAuthenticated() && request.auth.uid != userId && (
+        isBoss() || 
+        (isKepala() && canAccessStore(resource.data.storeId))
+      );
+      
+      // Users can create/update their own profile
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Only boss can create/update other users
+      allow create, update: if isBoss();
+      
+      // Only kepala can update users in their store
+      allow update: if isKepala() && canAccessStore(resource.data.storeId);
+    }
+
+    // Stores collection
+    match /stores/{storeId} {
+      // Users can read their own store, boss can read all
+      allow read: if isAuthenticated() && (
+        isBoss() || 
+        getUserStoreId() == storeId
+      );
+      
+      // Only boss can create/update/delete stores
+      allow create, update, delete: if isBoss();
+      
+      // Invoice counters subcollection
+      match /invoiceCounters/{counterId} {
+        // Allow read/write for invoice generation by admins and above
+        allow read, write: if isAdmin() && canAccessStore(storeId);
+      }
+    }
+
+    // Items collection
+    match /items/{itemId} {
+      // Users can read items from their store, boss can read all
+      allow read: if isAuthenticated() && (
+        isBoss() || 
+        canAccessStore(resource.data.storeId)
+      );
+      
+      // Admin and above can create items for their store
+      allow create: if isAdmin() && 
+        canAccessStore(request.resource.data.storeId) &&
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Admin and above can update items in their store
+      allow update: if isAdmin() && 
+        canAccessStore(resource.data.storeId) &&
+        request.resource.data.updatedBy == request.auth.uid;
+      
+      // Only kepala can delete items
+      allow delete: if isKepala() && canAccessStore(resource.data.storeId);
+    }
+
+    // Invoices collection
+    match /invoices/{invoiceId} {
+      // Users can read invoices from their store (based on invoice number), boss can read all
+      allow read: if isAuthenticated() && (
+        isBoss() || 
+        // For store-based access, we'll check on the client side since invoice number contains store code
+        isAdmin()
+      );
+      
+      // Admin and above can create invoices
+      allow create: if isAdmin() && 
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Admin can update their own invoices, kepala can update any in their store
+      allow update: if isAuthenticated() && (
+        (isAdmin() && resource.data.createdBy == request.auth.uid) ||
+        isKepala()
+      );
+      
+      // Only kepala can delete invoices
+      allow delete: if isKepala();
+    }
+
+    // Deny all other reads/writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -104,7 +104,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!hasPreviousPage || disabled}
-          className="relative inline-flex items-center px-2 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="relative inline-flex items-center px-2 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <span className="sr-only">Sebelumnya</span>
           <svg
@@ -142,7 +142,7 @@ export default function Pagination({
               key={page}
               onClick={() => onPageChange(page)}
               disabled={disabled}
-              className={`relative inline-flex items-center px-3 py-1 text-sm font-medium border focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed ${
+              className={`relative inline-flex items-center px-3 py-1 text-sm font-medium border cursor-pointer focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed ${
                 isActive
                   ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
                   : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
@@ -157,7 +157,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!hasNextPage || disabled}
-          className="relative inline-flex items-center px-2 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="relative inline-flex items-center px-2 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <span className="sr-only">Selanjutnya</span>
           <svg

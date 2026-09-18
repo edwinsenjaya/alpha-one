@@ -1,5 +1,7 @@
 import { Timestamp, serverTimestamp } from "firebase/firestore";
 import { FirestoreTimestamp } from "@/types/table";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 // Convert Firestore Timestamp to Date
 export const timestampToDate = (
@@ -16,8 +18,13 @@ export const dateToTimestamp = (date: Date): Timestamp => {
   return Timestamp.fromDate(date);
 };
 
-// Get server timestamp for Firestore
+// Get server timestamp for Firestore (DEPRECATED - use getCurrentDateString instead)
 export const getServerTimestamp = () => serverTimestamp();
+
+// Helper function to generate current date string
+export const getCurrentDateString = (): string => {
+  return format(new Date(), "EEEE, d MMMM yyyy HH:mm:ss", { locale: id });
+};
 
 // Generate invoice number based on store code and sequence
 export const generateInvoiceNumber = (

@@ -12,7 +12,7 @@ export interface UserData {
   email: string;
   role: UserRole;
   storeId: string;
-  createdAt: FirestoreTimestamp;
+  createdAt: string; // Changed to string: "EEEE, d MMMM yyyy HH:mm:ss"
 }
 
 // Store related types
@@ -21,8 +21,8 @@ export interface StoreData {
   name: string;
   code: string;
   active: boolean;
-  updatedAt: FirestoreTimestamp;
-  createdAt: FirestoreTimestamp;
+  updatedAt: string; // Changed to string: "EEEE, d MMMM yyyy HH:mm:ss"
+  createdAt: string; // Changed to string: "EEEE, d MMMM yyyy HH:mm:ss"
 }
 
 // Invoice counter (subcollection under stores)
@@ -60,10 +60,11 @@ export interface ItemsInvoiceType {
 export interface InvoiceType {
   id: string;
   invoiceNumber: string;
+  storeId: string; // Added: Store reference for filtering
   customerName: string;
   createdBy: string;
-  createdAt: FirestoreTimestamp;
-  updatedAt: FirestoreTimestamp;
+  createdAt: string;
+  updatedAt: string;
   totalColor: number;
   totalRoll: number;
   totalYard: number;
@@ -72,6 +73,19 @@ export interface InvoiceType {
   notes: string;
   items: ItemsInvoiceType[];
   pdfUrl?: string;
+}
+
+// Form input type for the create invoice table (yardsInput is raw user string)
+export interface InvoiceItemInput {
+  id: string;
+  itemId: string;
+  name: string;
+  color: string;
+  roll: number;
+  yardsInput: string;
+  yards: number[];
+  price: number;
+  total: number;
 }
 
 // Legacy types for backward compatibility (can be removed later)
