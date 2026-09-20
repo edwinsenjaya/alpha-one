@@ -24,9 +24,9 @@
 
 You can log directly into the live preview/local environment using the pre-configured demo account below:
 
-| Portal | Demo Email | Password | Role Scope |
-| :--- | :--- | :--- | :--- |
-| **Admin Dashboard** | `edwinsenjaya7@gmail.com` | `abcD1` | System Boss / Multi-Store Access |
+| Portal              | Demo Email                | Password | Role Scope                       |
+| :------------------ | :------------------------ | :------- | :------------------------------- |
+| **Admin Dashboard** | `edwinsenjaya7@gmail.com` | `abcD1.` | System Boss / Multi-Store Access |
 
 1. Navigate to `/login`
 2. Enter the credentials above to explore the dashboard, inventory management, and invoice creation features.
@@ -68,12 +68,14 @@ npm run reset:all
 ## 🚀 Local Development Setup
 
 1. **Clone the repository:**
+
    ```bash
    git clone git@github.com:edwinsenjaya/alpha-one.git
    cd alpha-one
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
