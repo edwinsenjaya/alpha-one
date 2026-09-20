@@ -11,7 +11,10 @@
     "seed:items": "tsx src/scripts/seedItems.ts",
     "reset:stores": "tsx src/scripts/resetStores.ts",
     "reset:all": "tsx src/scripts/resetStores.ts --full",
-    "create:boss": "tsx src/scripts/createBossUser.ts"
+    "create:boss": "tsx src/scripts/createBossUser.ts",
+    "firebase": "firebase",
+    "login": "firebase login --reauth",
+    "deploy": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -29,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
+    "firebase-tools": "^15.30.2",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"

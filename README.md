@@ -22,13 +22,15 @@
 
 ## 🔐 Recruiter & Demo Access
 
-You can log directly into the live preview/local environment using the pre-configured demo account below:
+🌐 **Live Production App:** [https://alpha-one-test.web.app](https://alpha-one-test.web.app)
+
+You can log directly into the live application or local environment using the pre-configured demo account below:
 
 | Portal              | Demo Email                | Password | Role Scope                       |
 | :------------------ | :------------------------ | :------- | :------------------------------- |
 | **Admin Dashboard** | `edwinsenjaya7@gmail.com` | `abcD1.` | System Boss / Multi-Store Access |
 
-1. Navigate to `/login`
+1. Open [https://alpha-one-test.web.app/login](https://alpha-one-test.web.app/login)
 2. Enter the credentials above to explore the dashboard, inventory management, and invoice creation features.
 
 ---
