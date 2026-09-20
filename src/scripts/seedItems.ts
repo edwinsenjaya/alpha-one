@@ -61,8 +61,8 @@ async function verifyStore(): Promise<StoreData> {
     code: doc.data().code,
   }));
 
-  // Find the specific store
-  const targetStore = stores.find((store) => store.id === STORE_ID);
+  // Find target store (use first store if fixed ID not found)
+  const targetStore = stores.find((store) => store.id === STORE_ID) || stores[0];
 
   if (!targetStore) {
     console.log("   ❌ Store not found with ID:", STORE_ID);
@@ -104,7 +104,7 @@ async function createItems(store: StoreData): Promise<void> {
     const roll = randomInt(5, 100);
 
     const itemData = {
-      storeId: STORE_ID,
+      storeId: store.id,
       name: itemName,
       color: color,
       roll: roll,
@@ -163,16 +163,25 @@ async function createItems(store: StoreData): Promise<void> {
   );
 }
 
-// Main seeding function
+// Create items for all stores
 async function seedItems() {
   try {
     console.log("\n=== ITEMS SEEDING SCRIPT ===\n");
 
-    // Step 1: Verify store exists
-    const store = await verifyStore();
+    const storesSnapshot = await getDocs(collection(db, "stores"));
+    if (storesSnapshot.empty) {
+      throw new Error("No stores found! Please run 'npm run reset:stores' first.");
+    }
 
-    // Step 2: Create items
-    await createItems(store);
+    const stores: StoreData[] = storesSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      name: doc.data().name,
+      code: doc.data().code,
+    }));
+
+    for (const store of stores) {
+      await createItems(store);
+    }
 
     console.log("\n=== SEEDING COMPLETED SUCCESSFULLY! ===\n");
   } catch (error) {

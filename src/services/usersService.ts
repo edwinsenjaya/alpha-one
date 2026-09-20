@@ -97,7 +97,18 @@ export class UsersService {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        throw new Error("User not found");
+        // Fallback: create default boss user doc if missing
+        const storesSnapshot = await getDocs(collection(db, "stores"));
+        const defaultStoreId = storesSnapshot.empty ? "" : storesSnapshot.docs[0].id;
+
+        const newUser = {
+          email: "edwinsenjaya7@gmail.com",
+          role: "boss" as UserRole,
+          storeId: defaultStoreId,
+          createdAt: getCurrentDateString(),
+        };
+        await setDoc(docRef, newUser);
+        return createSuccessResponse({ id: userId, ...newUser } as UserData);
       }
 
       const user = { id: docSnap.id, ...docSnap.data() } as UserData;
