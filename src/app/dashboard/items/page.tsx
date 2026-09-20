@@ -196,7 +196,7 @@ export default function Items() {
     )
       return;
 
-    const message = `Create new color variant of ${selectedItem.name}?\nColor: ${newColorData.color}\nStock: ${newColorData.roll} rolls`;
+    const message = `Buat varian baru untuk ${selectedItem.name}?\nKode Warna: ${newColorData.color}\nJumlah Roll: ${newColorData.roll}`;
 
     showConfirmation("tambahBaru", message, async () => {
       if (!selectedItem || !currentUser) return;
@@ -265,18 +265,18 @@ export default function Items() {
     <ProtectedRoute>
       <IdleLogoutWrapper>
         <Sidebar>
-          <div className="flex-1 flex-col h-full w-[calc(100%-200px)] px-7 pt-9 pb-5">
+          <div className="flex flex-1 flex-col h-full px-7 pt-9 pb-5">
             <div className="flex mb-5">
               <h1 className="text-lg mr-5 font-semibold">
                 Data Stock Kain - {currentStore?.name || "Loading..."}
               </h1>
               <div className="grow"></div>
               {/* Show low stock alerts */}
-              {lowStockItems.length > 0 && (
+              {/* {lowStockItems.length > 0 && (
                 <div className="text-sm text-red-500 mr-4">
                   {lowStockItems.length} item(s) low stock
                 </div>
-              )}
+              )} */}
             </div>
 
             <div className="flex gap-4 items-center mb-7">
@@ -302,16 +302,18 @@ export default function Items() {
               </div>
             ) : (
               <>
-                <ItemsTable
-                  tableData={items}
-                  tableHead={tableHead}
-                  onUpdateClick={handleUpdateClick}
-                  onTambahBaruClick={handleTambahBaruClick}
-                />
-
+                {pagination && (
+                  <ItemsTable
+                    tableData={items}
+                    tableHead={tableHead}
+                    onUpdateClick={handleUpdateClick}
+                    onTambahBaruClick={handleTambahBaruClick}
+                    pagination={pagination}
+                  />
+                )}
                 {/* Pagination */}
                 {pagination && pagination.totalItems > 0 && (
-                  <div className="mt-6">
+                  <div className="mt-6 pb-2">
                     <Pagination
                       pagination={pagination}
                       onPageChange={handlePageChange}

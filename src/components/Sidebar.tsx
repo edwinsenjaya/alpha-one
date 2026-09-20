@@ -3,10 +3,9 @@
 import { logout } from "@/firebase/authFunctions";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
-import { db } from "@/firebase/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
 import { ReactNode, useEffect, useState } from "react";
 import { useStores } from "@/hooks/useStores";
+import { useUsers } from "@/hooks/useUsers";
 import {
   Square3Stack3DIcon,
   ClipboardDocumentListIcon,
@@ -16,35 +15,19 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [userData, setUserData]: any = useState();
   const [currentStore, setCurrentStore] = useState<any>(null);
-  async function testFirestore() {
-    if (user) {
-      const docRef = doc(db, "users", String(user?.uid));
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const userData = docSnap.data();
-        setUserData(userData);
-      }
-    }
-  }
   const { getStoreById } = useStores();
-
-  useEffect(() => {
-    console.log(user, "< user credential");
-    testFirestore();
-  }, [user]);
+  const { currentUser } = useUsers();
 
   useEffect(() => {
     const fetchStore = async () => {
-      if (userData?.storeId) {
-        const store = await getStoreById(userData.storeId);
+      if (currentUser?.storeId) {
+        const store = await getStoreById(currentUser.storeId);
         setCurrentStore(store);
       }
     };
     fetchStore();
-  }, [userData, getStoreById]);
+  }, [getStoreById, currentUser]);
 
   const handleLogout = async () => {
     await logout();
@@ -52,8 +35,9 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="flex h-screen w-screen">
-        <div className="flex flex-col w-[210px] h-full border-e border-gray-400 shadow-lg py-4">
+      <div className="flex h-screen w-screen overflow-hidden">
+        {/* Fixed Sidebar */}
+        <div className="flex flex-col w-[210px] h-full border-e border-gray-400 shadow-lg py-4 flex-shrink-0 print:hidden">
           <div className="flex justify-center">
             <div className="flex justify-center w-[85%] mb-8 mt-1 pb-6 border-b border-gray-400">
               <img className="w-[100px]" src="/logo-text.png" alt="logo-text" />
@@ -70,7 +54,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                   : "hover:bg-gray-100"
               }`}
             >
-              <Square3Stack3DIcon className="w-5 h-5" /> Stock Kain
+              <Square3Stack3DIcon className="w-5 h-5 text-[#2F2F2F]" /> Stock
+              Kain
             </div>
             <div
               onClick={() => {
@@ -82,7 +67,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                   : "hover:bg-gray-100"
               }`}
             >
-              <ClipboardDocumentListIcon className="w-5 h-5" /> Invoice
+              <ClipboardDocumentListIcon className="w-5 h-5 text-[#2F2F2F]" />{" "}
+              Invoice
             </div>
           </div>
           {/* <div className="cursor-pointer mb-8 px-8">Manage Users</div> */}
@@ -94,13 +80,15 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               </div>
               <div className="text-xs mb-3 text-center px-4">
                 {`${
-                  userData?.role.charAt(0).toUpperCase() +
-                    userData?.role.slice(1) || ""
+                  currentUser?.role
+                    ? currentUser.role.charAt(0).toUpperCase() +
+                      currentUser.role.slice(1)
+                    : ""
                 } - ${currentStore?.name || ""}`}
               </div>
               <div className="flex justify-center px-8">
                 <button
-                  className="border text-sm cursor-pointer p-1 rounded-md w-[100px] bg-red-500 text-white"
+                  className="border text-sm cursor-pointer p-1 rounded-md w-[80px] bg-red-500 text-white"
                   onClick={handleLogout}
                 >
                   Logout
@@ -109,7 +97,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
-        {children}
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto h-full">{children}</div>
       </div>
     </>
   );

@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { InvoiceType, InvoiceStatus, StoreData } from "@/types/table";
 import { InvoicesService } from "@/services/invoicesService";
 import { ApiResponse } from "@/utils/errors";
-import { PaginationOptions } from "@/utils/firestore";
+import { PaginationOptions, PaginationMetadata } from "@/utils/firestore";
 import { useAuth } from "@/context/AuthContext";
 
 interface UseInvoicesOptions {
-  storeCode?: string;
+  storeId?: string;
   autoFetch?: boolean;
   realTime?: boolean;
   statusFilter?: InvoiceStatus;
@@ -18,6 +18,7 @@ interface UseInvoicesReturn {
   invoices: InvoiceType[];
   loading: boolean;
   error: string | null;
+  pagination: PaginationMetadata | null;
   createInvoice: (
     invoiceData: Omit<
       InvoiceType,
@@ -51,7 +52,7 @@ export const useInvoices = (
   options: UseInvoicesOptions = {}
 ): UseInvoicesReturn => {
   const {
-    storeCode,
+    storeId,
     autoFetch = true,
     realTime = false,
     statusFilter,
@@ -64,6 +65,7 @@ export const useInvoices = (
   const [loading, setLoading] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [stats, setStats] = useState({
     totalInvoices: 0,
     totalRevenue: 0,
@@ -81,23 +83,43 @@ export const useInvoices = (
 
     try {
       let response: ApiResponse<InvoiceType[]>;
-
-      if (storeCode) {
+      // Fetch all invoices without pagination limit (for client-side pagination)
+      if (storeId) {
         response = await InvoicesService.getInvoicesByStore(
-          storeCode,
-          paginationOptions,
+          storeId,
+          undefined, // No server-side pagination
           statusFilter,
           searchTerm
         );
       } else {
         response = await InvoicesService.getAllInvoices(
-          paginationOptions,
+          undefined, // No server-side pagination
           statusFilter
         );
       }
-
       if (response.success && response.data) {
-        setInvoices(response.data);
+        const allInvoices = response.data;
+        const totalItems = allInvoices.length;
+
+        // Calculate pagination
+        const currentPage = paginationOptions?.page || 1;
+        const itemsPerPage = paginationOptions?.limit || 25;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+
+        // Slice invoices for current page
+        const paginatedInvoices = allInvoices.slice(startIndex, endIndex);
+
+        setInvoices(paginatedInvoices);
+        setPagination({
+          currentPage,
+          itemsPerPage,
+          totalItems,
+          totalPages,
+          hasNextPage: currentPage < totalPages,
+          hasPreviousPage: currentPage > 1,
+        });
       } else {
         setError(response.error?.message || "Failed to fetch invoices");
       }
@@ -107,7 +129,7 @@ export const useInvoices = (
     } finally {
       setLoading(false);
     }
-  }, [user, storeCode, paginationOptions, statusFilter, searchTerm]);
+  }, [user, storeId, paginationOptions, statusFilter, searchTerm]);
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
@@ -115,7 +137,7 @@ export const useInvoices = (
 
     setLoadingStats(true);
     try {
-      const response = await InvoicesService.getInvoiceStats(storeCode);
+      const response = await InvoicesService.getInvoiceStats(storeId);
       if (response.success && response.data) {
         setStats(response.data);
       }
@@ -124,7 +146,7 @@ export const useInvoices = (
     } finally {
       setLoadingStats(false);
     }
-  }, [user, storeCode]);
+  }, [user, storeId]);
 
   // Create invoice
   const createInvoice = useCallback(
@@ -278,7 +300,7 @@ export const useInvoices = (
   useEffect(() => {
     if (realTime && user) {
       const unsubscribe = InvoicesService.subscribeToInvoices(
-        storeCode || null,
+        storeId || null,
         (updatedInvoices) => {
           setInvoices(updatedInvoices);
           setError(null);
@@ -292,7 +314,7 @@ export const useInvoices = (
 
       return unsubscribe;
     }
-  }, [realTime, storeCode, user, statusFilter]);
+  }, [realTime, storeId, user, statusFilter]);
 
   // Auto-fetch on mount and dependency changes
   useEffect(() => {
@@ -312,6 +334,7 @@ export const useInvoices = (
     invoices,
     loading,
     error,
+    pagination,
     createInvoice,
     updateInvoice,
     updateInvoiceStatus,

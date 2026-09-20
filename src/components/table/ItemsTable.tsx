@@ -1,14 +1,14 @@
 "use client";
 
 import { itemsType } from "@/types/table";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { PaginationMetadata } from "@/utils/firestore";
 
 interface ItemsTableProps {
   tableHead: string[];
   tableData: itemsType[];
   onUpdateClick: (item: itemsType) => void;
   onTambahBaruClick: (item: itemsType) => void;
+  pagination: PaginationMetadata;
 }
 
 export default function ItemsTable({
@@ -16,26 +16,27 @@ export default function ItemsTable({
   tableData,
   onUpdateClick,
   onTambahBaruClick,
+  pagination,
 }: ItemsTableProps) {
   return (
     <div className="w-full h-auto overflow-auto">
-      <div className="flex w-fit">
+      <div className="flex w-fit sticky top-0 z-10 bg-white">
         {tableHead.map((tableHeadData, i) => {
           return (
             <div
               key={tableHeadData}
               className={
                 i === tableHead.length - 1
-                  ? "p-2 border-y border-x rounded-tr-sm text-[15px]"
+                  ? "p-2 border-y border-x border-gray-400 rounded-tr-sm text-[15px]"
                   : i === 0
-                  ? "p-2 border-y border-s rounded-tl-sm text-[15px]"
-                  : "p-2 border-y border-s text-[15px]"
+                  ? "p-2 border-y border-s border-gray-400 rounded-tl-sm text-[15px]"
+                  : "p-2 border-y border-s border-gray-400 text-[15px]"
               }
               style={
                 tableHeadData === "No"
                   ? { width: "45px", textAlign: "center" }
                   : tableHeadData === "Tanggal Update"
-                  ? { width: "165px", textAlign: "center" }
+                  ? { width: "190px", textAlign: "center" }
                   : tableHeadData === "Nama Kain"
                   ? { width: "220px", textAlign: "center" }
                   : tableHeadData === "Kode Warna"
@@ -57,29 +58,32 @@ export default function ItemsTable({
               <div
                 className={
                   j === tableData.length - 1
-                    ? "w-[45px] text-sm text-center p-2 border-b border-s rounded-bl-sm"
-                    : "w-[45px] text-sm text-center p-2 border-b border-s"
+                    ? "w-[45px] text-sm text-center p-2 border-b border-s border-gray-400 rounded-bl-sm"
+                    : "w-[45px] text-sm text-center p-2 border-b border-s border-gray-400"
                 }
               >
-                {j + 1}
+                {j +
+                  1 +
+                  (pagination.currentPage - 1) * pagination.itemsPerPage ||
+                  j + 1}
               </div>
-              <div className="w-[220px] text-sm p-2 border-b border-s">
+              <div className="w-[220px] text-sm p-2 border-b border-s border-gray-400">
                 {itemsData.name}
               </div>
-              <div className="w-[110px] text-sm p-2 border-b border-s">
+              <div className="w-[110px] text-sm p-2 border-b border-s border-gray-400">
                 {itemsData.color || "-"}
               </div>
-              <div className="w-[100px] text-sm text-center p-2 border-b border-s">
+              <div className="w-[100px] text-sm text-center p-2 border-b border-s border-gray-400">
                 {itemsData.roll}
               </div>
-              <div className="w-[165px] text-sm p-2 border-b border-s">
+              <div className="w-[190px] text-sm p-2 border-b border-s border-gray-400">
                 {itemsData.updatedAt}
               </div>
               <div
                 className={
                   j === tableData.length - 1
-                    ? "w-[240px] text-sm text-center p-2 border-b border-x rounded-br-sm"
-                    : "w-[240px] text-sm text-center p-2 border-b border-x"
+                    ? "w-[240px] text-sm text-center p-2 border-b border-x border-gray-400 rounded-br-sm"
+                    : "w-[240px] text-sm text-center p-2 border-b border-x border-gray-400"
                 }
               >
                 <button

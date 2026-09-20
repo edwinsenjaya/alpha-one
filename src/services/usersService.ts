@@ -22,7 +22,7 @@ import {
 import {
   cleanFirestoreData,
   validateRequiredFields,
-  getServerTimestamp,
+  getCurrentDateString,
 } from "@/utils/firestore";
 
 const COLLECTION_NAME = "users";
@@ -67,7 +67,7 @@ export class UsersService {
         // For new user creation
         docData = cleanFirestoreData({
           ...userData,
-          createdAt: getServerTimestamp(),
+          createdAt: getCurrentDateString(),
         });
 
         await setDoc(docRef, docData);
