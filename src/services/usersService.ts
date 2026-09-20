@@ -98,10 +98,13 @@ export class UsersService {
 
       if (!docSnap.exists()) {
         // Fallback: create default boss user doc if missing
+        const storesSnapshot = await getDocs(collection(db, "stores"));
+        const defaultStoreId = storesSnapshot.empty ? "" : storesSnapshot.docs[0].id;
+
         const newUser = {
           email: "edwinsenjaya7@gmail.com",
           role: "boss" as UserRole,
-          storeId: "9aCUbT4XrpIx97Fyizkc", // First store ID
+          storeId: defaultStoreId,
           createdAt: getCurrentDateString(),
         };
         await setDoc(docRef, newUser);
