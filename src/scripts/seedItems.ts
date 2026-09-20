@@ -61,8 +61,8 @@ async function verifyStore(): Promise<StoreData> {
     code: doc.data().code,
   }));
 
-  // Find the specific store
-  const targetStore = stores.find((store) => store.id === STORE_ID);
+  // Find target store (use first store if fixed ID not found)
+  const targetStore = stores.find((store) => store.id === STORE_ID) || stores[0];
 
   if (!targetStore) {
     console.log("   ❌ Store not found with ID:", STORE_ID);
@@ -104,7 +104,7 @@ async function createItems(store: StoreData): Promise<void> {
     const roll = randomInt(5, 100);
 
     const itemData = {
-      storeId: STORE_ID,
+      storeId: store.id,
       name: itemName,
       color: color,
       roll: roll,

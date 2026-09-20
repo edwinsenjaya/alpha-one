@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "alpha-one-4cc71.firebaseapp.com",
-  projectId: "alpha-one-4cc71",
-  storageBucket: "alpha-one-4cc71.firebasestorage.app",
-  messagingSenderId: "479983404770",
-  appId: "1:479983404770:web:d525ef4e6e7f748e5600bb",
-  measurementId: "G-0M3YG2JR88",
+  apiKey: "AIzaSyBKeQmFoUc46FjVgeVEQSshMtHspro75iE",
+  authDomain: "alpha-one-test.firebaseapp.com",
+  projectId: "alpha-one-test",
+  storageBucket: "alpha-one-test.firebasestorage.app",
+  messagingSenderId: "400898552622",
+  appId: "1:400898552622:web:eab835df0e8a55f98880bf",
+  measurementId: "G-CFN2DLX47N",
 };
 
 const app = initializeApp(firebaseConfig);
